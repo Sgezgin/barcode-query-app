@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Settings, LogOut, User, Save, X } from 'lucide-react';
+import { Settings, LogOut, User, Save, X, ArrowLeft } from 'lucide-react';
 
-const Header = ({ onLogout, credentials, onUpdateCredentials }) => {
+const Header = ({ onLogout, credentials, onUpdateCredentials, onBackToModules, showBackButton = false, currentModule }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [newUsername, setNewUsername] = useState(credentials.username);
   const [newPassword, setNewPassword] = useState(credentials.password);
@@ -31,20 +31,41 @@ const Header = ({ onLogout, credentials, onUpdateCredentials }) => {
     setShowSettings(false);
   };
 
+  const getModuleTitle = () => {
+    if (currentModule === 'barcode') return 'Barcode Query System';
+    if (currentModule === 'qr') return 'Eczane Karekod Parçalama';
+    return 'Sistem Yönetimi';
+  };
+
+  const getModuleDescription = () => {
+    if (currentModule === 'barcode') return 'Carrier Label Sorgulama ve Yönetim Sistemi';
+    if (currentModule === 'qr') return 'QR Karekod Parçalama ve Analiz Sistemi';
+    return 'Modül Seçimi ve Sistem Yönetimi';
+  };
+
   return (
     <>
       <div className="card mb-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
+            {showBackButton && (
+              <button
+                onClick={onBackToModules}
+                className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-xl backdrop-blur-lg border border-white/30 transition-all duration-300 hover:scale-105"
+                title="Modül Seçimine Dön"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl w-14 h-14 flex items-center justify-center shadow-lg">
               <User className="w-7 h-7 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-bold gradient-text mb-1">
-                Barcode Query System
+                {getModuleTitle()}
               </h1>
               <p className="text-white/70">
-                Carrier Label Sorgulama ve Yönetim Sistemi
+                {getModuleDescription()}
               </p>
             </div>
           </div>
