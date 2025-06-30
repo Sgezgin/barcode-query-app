@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, FileText, X, Play, CheckCircle, AlertCircle, QrCode } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-const QRParseTab = ({ onParseComplete }) => {
+const QRParseTabOld = ({ onParseComplete }) => {
   const [uploadedData, setUploadedData] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -423,4 +423,4 @@ const QRParseTab = ({ onParseComplete }) => {
   );
 };
 
-export default QRParseTab;
+export default QRParseTabOld;
