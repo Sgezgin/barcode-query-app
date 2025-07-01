@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Download, FileText, Search, Filter, Eye, EyeOff, CheckCircle, XCircle, Clock, QrCode, RefreshCw } from 'lucide-react';
+import { Download, FileText, Search, Filter, Eye, EyeOff, CheckCircle, XCircle, Clock, QrCode } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-const QRResultsTab = ({ qrResults }) => {
+const QRResultsTabOld = ({ qrResults }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, success, error
   const [expandedResults, setExpandedResults] = useState(new Set());
@@ -12,8 +12,7 @@ const QRResultsTab = ({ qrResults }) => {
     const matchesSearch = result.originalQR.toLowerCase().includes(searchFilter.toLowerCase()) ||
                          result.barkod.toLowerCase().includes(searchFilter.toLowerCase()) ||
                          result.seriNo.toLowerCase().includes(searchFilter.toLowerCase()) ||
-                         result.partiNo.toLowerCase().includes(searchFilter.toLowerCase()) ||
-                         (result.cleanedQR && result.cleanedQR.toLowerCase().includes(searchFilter.toLowerCase()));
+                         result.partiNo.toLowerCase().includes(searchFilter.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || 
                          (statusFilter === 'success' && !result.error) ||
@@ -45,8 +44,7 @@ const QRResultsTab = ({ qrResults }) => {
   const exportToExcel = () => {
     const exportData = filteredResults.map((result, index) => ({
       'Sıra': index + 1,
-      'Orijinal QR Kod': result.originalQR,
-      'Temizlenmiş QR Kod': result.cleanedQR || result.originalQR || 'N/A',
+      'QR Kod': result.originalQR,
       'Barkod': result.barkod || 'Bulunamadı',
       'Seri Numarası': result.seriNo || 'Bulunamadı',
       'Son Kullanma Tarihi': result.sonKullanmaTarihi || 'Bulunamadı',
@@ -71,24 +69,26 @@ const QRResultsTab = ({ qrResults }) => {
 
   // Export to TXT
   const exportToTxt = () => {
-    // CSV header
-    let content = `Sıra\tOrijinal QR Kod\tTemizlenmiş QR Kod\tBarkod\tSeri Numarası\tSon Kullanma Tarihi\tParti Numarası\tDurum\tHata Mesajı\tİşlem Tarihi\n`;
+    let content = `QR Karekod Parçalama Sonuçları\n`;
+    content += `Oluşturulma Tarihi: ${new Date().toLocaleString('tr-TR')}\n`;
+    content += `Toplam Sonuç: ${filteredResults.length}\n`;
+    content += `${'='.repeat(50)}\n\n`;
 
     filteredResults.forEach((result, index) => {
-      const row = [
-        index + 1,
-        result.originalQR || '',
-        result.cleanedQR || result.originalQR || '',
-        result.barkod || 'Bulunamadı',
-        result.seriNo || 'Bulunamadı', 
-        result.sonKullanmaTarihi || 'Bulunamadı',
-        result.partiNo || 'Bulunamadı',
-        result.error ? 'Hata' : 'Başarılı',
-        result.error || '',
-        new Date(result.timestamp).toLocaleString('tr-TR')
-      ].join('\t');
+      content += `${index + 1}. QR Kod: ${result.originalQR}\n`;
+      content += `   Durum: ${result.error ? 'Hata' : 'Başarılı'}\n`;
       
-      content += row + '\n';
+      if (!result.error) {
+        content += `   Barkod: ${result.barkod || 'Bulunamadı'}\n`;
+        content += `   Seri Numarası: ${result.seriNo || 'Bulunamadı'}\n`;
+        content += `   Son Kullanma Tarihi: ${result.sonKullanmaTarihi || 'Bulunamadı'}\n`;
+        content += `   Parti Numarası: ${result.partiNo || 'Bulunamadı'}\n`;
+      } else {
+        content += `   Hata: ${result.error}\n`;
+      }
+      
+      content += `   İşlem Tarihi: ${new Date(result.timestamp).toLocaleString('tr-TR')}\n`;
+      content += `\n`;
     });
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -264,23 +264,17 @@ const QRResultsTab = ({ qrResults }) => {
                   </div>
                   
                   {/* QR Code Preview */}
-                  <div className="flex-1">
+                  <div>
                     <h3 className="text-lg font-semibold text-white font-mono tracking-wider">
-                      {result.originalQR.length > 40 ? result.originalQR.substring(0, 40) + '...' : result.originalQR}
+                      {result.originalQR.length > 30 ? result.originalQR.substring(0, 30) + '...' : result.originalQR}
                     </h3>
-                    <div className="flex items-center space-x-4 text-sm text-white/60 mt-1">
+                    <div className="flex items-center space-x-4 text-sm text-white/60">
                       <span className="flex items-center space-x-1">
                         <Clock className="w-3 h-3" />
                         <span>{new Date(result.timestamp).toLocaleString('tr-TR')}</span>
                       </span>
                       {!hasError && result.barkod && (
                         <span>Barkod: {result.barkod}</span>
-                      )}
-                      {result.cleanedQR && result.cleanedQR !== result.originalQR && (
-                        <span className="flex items-center space-x-1 text-blue-300">
-                          <RefreshCw className="w-3 h-3" />
-                          <span>Temizlendi</span>
-                        </span>
                       )}
                     </div>
                   </div>
@@ -314,52 +308,30 @@ const QRResultsTab = ({ qrResults }) => {
                     <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-3">
                       <p className="text-green-200 text-sm">
                         QR kod başarıyla parçalandı
-                        {result.cleanedQR && result.cleanedQR !== result.originalQR && (
-                          <span className="ml-2 text-blue-300">(Temizleme uygulandı)</span>
-                        )}
                       </p>
                     </div>
 
                     {/* Parsed Data */}
-                    <div className="grid md:grid-cols-4 gap-3">
-                      <div className="bg-black/20 rounded-lg p-3">
-                        <span className="text-white/60 text-sm block">Barkod:</span>
-                        <span className="text-white font-mono text-sm">{result.barkod || 'Bulunamadı'}</span>
-                      </div>
-                      <div className="bg-black/20 rounded-lg p-3">
-                        <span className="text-white/60 text-sm block">Seri No:</span>
-                        <span className="text-white font-mono text-sm">{result.seriNo || 'Bulunamadı'}</span>
-                      </div>
-                      <div className="bg-black/20 rounded-lg p-3">
-                        <span className="text-white/60 text-sm block">Son Kullanma:</span>
-                        <span className="text-white font-mono text-sm">{result.sonKullanmaTarihi || 'Bulunamadı'}</span>
-                      </div>
-                      <div className="bg-black/20 rounded-lg p-3">
-                        <span className="text-white/60 text-sm block">Parti No:</span>
-                        <span className="text-white font-mono text-sm">{result.partiNo || 'Bulunamadı'}</span>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <span className="text-white/60 text-sm block">Son Kullanma Tarihi:</span>
+                          <span className="text-white font-mono">{result.sonKullanmaTarihi || 'Bulunamadı'}</span>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <span className="text-white/60 text-sm block">Parti Numarası:</span>
+                          <span className="text-white font-mono">{result.partiNo || 'Bulunamadı'}</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Full QR Code (if expanded) */}
                     {isExpanded && (
-                      <div className="mt-4 space-y-3">
+                      <div className="mt-4">
                         <div className="bg-black/20 rounded-lg p-3">
-                          <span className="text-white/60 text-sm block mb-2">Orijinal QR Kod:</span>
+                          <span className="text-white/60 text-sm block mb-2">Tam QR Kod:</span>
                           <span className="text-white/90 font-mono text-xs break-all">{result.originalQR}</span>
                         </div>
-                        
-                        {result.cleanedQR && result.cleanedQR !== result.originalQR && (
-                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                            <span className="text-blue-200 text-sm block mb-2 flex items-center space-x-2">
-                              <RefreshCw className="w-4 h-4" />
-                              <span>Temizlenmiş QR Kod:</span>
-                            </span>
-                            <span className="text-white/90 font-mono text-xs break-all">{result.cleanedQR}</span>
-                            <p className="text-blue-200/70 text-xs mt-2">
-                              Parantezler, boşluklar ve özel karakterler kaldırıldı
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -369,18 +341,9 @@ const QRResultsTab = ({ qrResults }) => {
                       <strong>Hata:</strong> {result.error}
                     </p>
                     {isExpanded && (
-                      <div className="mt-3 pt-3 border-t border-red-500/20 space-y-3">
-                        <div>
-                          <span className="text-white/60 text-sm block mb-2">Orijinal QR Kod:</span>
-                          <span className="text-white/90 font-mono text-xs break-all">{result.originalQR}</span>
-                        </div>
-                        
-                        {result.cleanedQR && result.cleanedQR !== result.originalQR && (
-                          <div>
-                            <span className="text-blue-200 text-sm block mb-2">Temizlenmiş QR Kod:</span>
-                            <span className="text-white/90 font-mono text-xs break-all">{result.cleanedQR}</span>
-                          </div>
-                        )}
+                      <div className="mt-3 pt-3 border-t border-red-500/20">
+                        <span className="text-white/60 text-sm block mb-2">QR Kod:</span>
+                        <span className="text-white/90 font-mono text-xs break-all">{result.originalQR}</span>
                       </div>
                     )}
                   </div>
@@ -416,4 +379,4 @@ const QRResultsTab = ({ qrResults }) => {
   );
 };
 
-export default QRResultsTab;
+export default QRResultsTabOld;
