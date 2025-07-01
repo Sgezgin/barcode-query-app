@@ -263,7 +263,7 @@ const QRParseTabOld = ({ onParseComplete }) => {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white mb-2">QR Karekod Parçalama</h2>
         <p className="text-white/70">
-          Excel (.xlsx) veya Text (.txt) dosyası yükleyerek QR kodlarını barkod, seri numarası, tarih ve parti bilgilerine ayırın.
+          Excel (.xlsx) veya Text (.txt) dosyası yükleyerek QR kodlarını barkod, seri numarası, tarih ve parti bilgilerine ayırın. ++
         </p>
       </div>
 

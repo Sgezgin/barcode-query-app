@@ -2,42 +2,12 @@ import { useState, useRef } from 'react';
 import { Upload, FileText, X, Play, CheckCircle, AlertCircle, QrCode } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-const QRParseTab = ({ onParseComplete }) => {
+const QRParseTabOld = ({ onParseComplete }) => {
   const [uploadedData, setUploadedData] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
   const [processingIndex, setProcessingIndex] = useState(-1);
   const fileInputRef = useRef();
-
-  // QR kod temizleme fonksiyonu - parantezleri, boşlukları ve tire işaretlerini kaldırır
-  const cleanQRCode = (qrCode) => {
-    if (!qrCode || typeof qrCode !== 'string') {
-      return '';
-    }
-    
-    // Adım adım temizleme işlemi
-    let cleaned = qrCode;
-    
-    // 1. Tüm parantez türlerini kaldır
-    cleaned = cleaned.replace(/[()[\]{}]/g, '');
-    
-    // 2. Tüm boşlukları kaldır
-    cleaned = cleaned.replace(/\s+/g, '');
-    
-    // 3. Tire işaretlerini kaldır
-    cleaned = cleaned.replace(/-/g, '');
-    
-    // 4. Trim işlemi
-    cleaned = cleaned.trim();
-    
-    console.log('QR Temizleme:', {
-      original: qrCode,
-      cleaned: cleaned,
-      changed: qrCode !== cleaned
-    });
-    
-    return cleaned;
-  };
 
   // Güncellenmiş QR kod parçalama fonksiyonu
   const parseQRCode = (qrCode) => {
@@ -52,9 +22,6 @@ const QRParseTab = ({ onParseComplete }) => {
     }
 
     try {
-      // QR kodu temizle
-      const cleanedQRCode = cleanQRCode(qrCode);
-      
       let result = {
         barkod: '',
         seriNo: '',
@@ -65,14 +32,14 @@ const QRParseTab = ({ onParseComplete }) => {
 
       let currentIndex = 0;
       
-      while (currentIndex < cleanedQRCode.length) {
+      while (currentIndex < qrCode.length) {
         // İlk 2-3 karakteri kod olarak oku
         let code = '';
         let codeLength = 2;
         
         // 3 haneli kodları kontrol et (010)
-        if (currentIndex + 2 < cleanedQRCode.length) {
-          const threeDigitCode = cleanedQRCode.substring(currentIndex, currentIndex + 3);
+        if (currentIndex + 2 < qrCode.length) {
+          const threeDigitCode = qrCode.substring(currentIndex, currentIndex + 3);
           if (threeDigitCode === '010') {
             code = threeDigitCode;
             codeLength = 3;
@@ -80,8 +47,8 @@ const QRParseTab = ({ onParseComplete }) => {
         }
         
         // 2 haneli kodları kontrol et (21, 17, 10)
-        if (!code && currentIndex + 1 < cleanedQRCode.length) {
-          const twoDigitCode = cleanedQRCode.substring(currentIndex, currentIndex + 2);
+        if (!code && currentIndex + 1 < qrCode.length) {
+          const twoDigitCode = qrCode.substring(currentIndex, currentIndex + 2);
           if (['21', '17', '10'].includes(twoDigitCode)) {
             code = twoDigitCode;
             codeLength = 2;
@@ -99,39 +66,35 @@ const QRParseTab = ({ onParseComplete }) => {
         switch (code) {
           case '010':
             // BARKOD (13 karakter)
-            if (currentIndex + 13 <= cleanedQRCode.length) {
-              result.barkod = cleanedQRCode.substring(currentIndex, currentIndex + 13);
+            if (currentIndex + 13 <= qrCode.length) {
+              result.barkod = qrCode.substring(currentIndex, currentIndex + 13);
               currentIndex += 13;
             }
             break;
             
           case '21':
-            // SERİ NO - Sonraki kod etiketine veya string sonuna kadar
+            // SERİ NO - Boşluk veya noktalı virgül görene kadar
             let serialEnd = currentIndex;
-            while (serialEnd < cleanedQRCode.length) {
-              const char = cleanedQRCode[serialEnd];
-              // Sonraki kod etiketlerini ara (10, 17, 21, 010)
-              const remaining = cleanedQRCode.substring(serialEnd);
-              if (remaining.startsWith('10') || remaining.startsWith('17') || 
-                  remaining.startsWith('21') || remaining.startsWith('010') ||
-                  char === ' ' || char === ';' || char === '\u001D') {
+            while (serialEnd < qrCode.length) {
+              const char = qrCode[serialEnd];
+              if (char === ' ' || char === ';' || char === '\u001D') { // GS karakteri
                 break;
               }
               serialEnd++;
             }
-            result.seriNo = cleanedQRCode.substring(currentIndex, serialEnd);
+            result.seriNo = qrCode.substring(currentIndex, serialEnd);
             currentIndex = serialEnd;
             
             // GS karakterini atla
-            if (currentIndex < cleanedQRCode.length && cleanedQRCode[currentIndex] === '\u001D') {
+            if (currentIndex < qrCode.length && qrCode[currentIndex] === '\u001D') {
               currentIndex++;
             }
             break;
             
           case '17':
             // SON KULLANMA (6 hane - YYMMDD)
-            if (currentIndex + 6 <= cleanedQRCode.length) {
-              const dateValue = cleanedQRCode.substring(currentIndex, currentIndex + 6);
+            if (currentIndex + 6 <= qrCode.length) {
+              const dateValue = qrCode.substring(currentIndex, currentIndex + 6);
               if (dateValue.length === 6) {
                 const year = '20' + dateValue.substring(0, 2);
                 const month = dateValue.substring(2, 4);
@@ -144,8 +107,8 @@ const QRParseTab = ({ onParseComplete }) => {
             
           case '10':
             // PARTİ/LOT - Kalan tüm karakterler
-            result.partiNo = cleanedQRCode.substring(currentIndex);
-            currentIndex = cleanedQRCode.length; // Döngüyü bitir
+            result.partiNo = qrCode.substring(currentIndex);
+            currentIndex = qrCode.length; // Döngüyü bitir
             break;
             
           default:
@@ -192,7 +155,7 @@ const QRParseTab = ({ onParseComplete }) => {
               const row = jsonData[i];
               if (row && row[0]) { // İlk sütundaki QR kodunu al
                 const qrCode = String(row[0]).trim();
-                if (qrCode && qrCode !== '' && qrCode !== 'undefined' && qrCode !== 'null') {
+                if (qrCode) {
                   qrCodes.push(qrCode);
                 }
               }
@@ -205,17 +168,14 @@ const QRParseTab = ({ onParseComplete }) => {
           
           lines.forEach(line => {
             const trimmed = line.trim();
-            if (trimmed && trimmed !== '' && trimmed !== 'undefined' && trimmed !== 'null') {
+            if (trimmed) {
               qrCodes.push(trimmed);
             }
           });
         }
 
-        // Remove duplicates and filter empty values
-        qrCodes = [...new Set(qrCodes)].filter(code => {
-          const cleaned = cleanQRCode(code);
-          return cleaned && cleaned.length > 10; // En az 10 karakter olmalı
-        });
+        // Remove duplicates
+        qrCodes = [...new Set(qrCodes)];
         setUploadedData(qrCodes);
         
         // Show success message
@@ -260,7 +220,6 @@ const QRParseTab = ({ onParseComplete }) => {
         
         results.push({
           originalQR: qrCode,
-          cleanedQR: cleanQRCode(qrCode), // Temizlenmiş QR kodu kaydet
           barkod: parsed.barkod,
           seriNo: parsed.seriNo,
           sonKullanmaTarihi: parsed.sonKullanmaTarihi,
@@ -304,7 +263,7 @@ const QRParseTab = ({ onParseComplete }) => {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white mb-2">QR Karekod Parçalama</h2>
         <p className="text-white/70">
-          Excel (.xlsx) veya Text (.txt) dosyası yükleyerek QR kodlarını barkod, seri numarası, tarih ve parti bilgilerine ayırın.
+          Excel (.xlsx) veya Text (.txt) dosyası yükleyerek QR kodlarını barkod, seri numarası, tarih ve parti bilgilerine ayırın. ++
         </p>
       </div>
 
@@ -448,15 +407,13 @@ const QRParseTab = ({ onParseComplete }) => {
             <div className="space-y-2">
               <h4 className="text-white font-medium">QR Parçalama Kuralları (Güncellenmiş)</h4>
               <ul className="text-white/70 text-sm space-y-1">
-                <li>• <strong>Otomatik Temizleme:</strong> Parantezler (), köşeli parantezler [], boşluklar, tire (-) ve özel karakterler otomatik kaldırılır</li>
-                <li>• <strong>Minimum Uzunluk:</strong> Temizlenmiş QR kod en az 10 karakter olmalı</li>
                 <li>• <strong>010:</strong> BARKOD (13 karakter)</li>
-                <li>• <strong>21:</strong> SERİ NO (Sonraki kod etiketine kadar)</li>
+                <li>• <strong>21:</strong> SERİ NO (Boşluk veya noktalı virgül görene kadar)</li>
                 <li>• <strong>17:</strong> SON KULLANMA (6 hane - YYMMDD formatı)</li>
                 <li>• <strong>10:</strong> PARTİ/LOT (Kalan tüm karakterler)</li>
                 <li>• Excel dosyalarında ilk sütundaki QR kodları işlenir</li>
                 <li>• TXT dosyalarında her satırdaki QR kod ayrı işlenir</li>
-                <li>• Duplicate ve boş QR kodları otomatik olarak temizlenir</li>
+                <li>• Duplicate QR kodları otomatik olarak temizlenir</li>
               </ul>
             </div>
           </div>
@@ -466,4 +423,4 @@ const QRParseTab = ({ onParseComplete }) => {
   );
 };
 
-export default QRParseTab;
+export default QRParseTabOld;

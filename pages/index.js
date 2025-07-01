@@ -7,7 +7,7 @@ import Navigation from '../components/Navigation';
 import QueryTab from '../components/QueryTab';
 import UploadTab from '../components/UploadTab';
 import ResultsTab from '../components/ResultsTab';
-import QRParseTab from '../components/QRParseTabOld';
+import QRParseTab from '../components/QRParseTab';
 import QRResultsTab from '../components/QRResultsTab';
 
 export default function Home() {
